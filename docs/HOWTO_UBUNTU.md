@@ -39,7 +39,7 @@ sudo apt install smartcashd
 ## Install electrumx database
 
 ```
-sudo apt install python3-leveldb libleveldb-dev
+sudo apt install python3-pip python3-leveldb libleveldb-dev
 ```
 
 ## Install required Python packages
