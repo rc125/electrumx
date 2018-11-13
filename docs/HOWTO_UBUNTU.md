@@ -142,7 +142,7 @@ and configure it according to your environment.
 
 ```
 COIN = SmartCash
-DAEMON_URL = http://<user>:<pass>:9679/
+DAEMON_URL = http://<user>:<pass>@localhost:9679/
 DB_DIRECTORY = ~/.electrumx/db
 DB_ENGINE = leveldb
 USERNAME = electrumx
