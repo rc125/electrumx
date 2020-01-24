@@ -27,11 +27,9 @@
 '''Script-related classes and functions.'''
 
 
-import struct
 from collections import namedtuple
 
 from electrumx.lib.enum import Enumeration
-from electrumx.lib.hash import hash160
 from electrumx.lib.util import unpack_le_uint16_from, unpack_le_uint32_from, \
     pack_le_uint16, pack_le_uint32
 
@@ -76,6 +74,16 @@ assert OpCodes.OP_EQUAL == 0x87
 assert OpCodes.OP_EQUALVERIFY == 0x88
 assert OpCodes.OP_CHECKSIG == 0xac
 assert OpCodes.OP_CHECKMULTISIG == 0xae
+
+
+def is_unspendable_legacy(script):
+    # OP_FALSE OP_RETURN or OP_RETURN
+    return script[:2] == b'\x00\x6a' or (script and script[0] == 0x6a)
+
+
+def is_unspendable_genesis(script):
+    # OP_FALSE OP_RETURN
+    return script[:2] == b'\x00\x6a'
 
 
 def _match_ops(ops, pattern):
@@ -144,37 +152,6 @@ class ScriptPubKey(object):
         return (bytes([OpCodes.OP_DUP, OpCodes.OP_HASH160])
                 + Script.push_data(hash160)
                 + bytes([OpCodes.OP_EQUALVERIFY, OpCodes.OP_CHECKSIG]))
-
-    @classmethod
-    def validate_pubkey(cls, pubkey, req_compressed=False):
-        if isinstance(pubkey, (bytes, bytearray)):
-            if len(pubkey) == 33 and pubkey[0] in (2, 3):
-                return  # Compressed
-            if len(pubkey) == 65 and pubkey[0] == 4:
-                if not req_compressed:
-                    return
-                raise PubKeyError('uncompressed pubkeys are invalid')
-        raise PubKeyError('invalid pubkey {}'.format(pubkey))
-
-    @classmethod
-    def pubkey_script(cls, pubkey):
-        cls.validate_pubkey(pubkey)
-        return Script.push_data(pubkey) + bytes([OpCodes.OP_CHECKSIG])
-
-    @classmethod
-    def multisig_script(cls, m, pubkeys):
-        '''Returns the script for a pay-to-multisig transaction.'''
-        n = len(pubkeys)
-        if not 1 <= m <= n <= 15:
-            raise ScriptError('{:d} of {:d} multisig script not possible'
-                              .format(m, n))
-        for pubkey in pubkeys:
-            cls.validate_pubkey(pubkey, req_compressed=True)
-        # See https://bitcoin.org/en/developer-guide
-        # 2 of 3 is: OP_2 pubkey1 pubkey2 pubkey3 OP_3 OP_CHECKMULTISIG
-        return (bytes([OP_1 + m - 1])
-                + b''.join(cls.push_data(pubkey) for pubkey in pubkeys)
-                + bytes([OP_1 + n - 1, OP_CHECK_MULTISIG]))
 
 
 class Script(object):

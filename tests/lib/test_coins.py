@@ -1,24 +1,98 @@
-import electrumx.lib.coins as coins
+# Tests of lib/coins.py
+
+import pytest
+
+from electrumx.lib.coins import BitcoinSV, NameMixin
+from electrumx.lib.script import OpCodes, Script
 
 
-def test_bitcoin_cash():
-    raw_header = bytes.fromhex(
-        "00000020df975c121dcbc18bbb7ddfd0419fc368b45db86b48c87e0"
-        "1000000000000000036ae3dd40a10a40d3050de13ca546a2f81589d"
-        "e2d2f317925a43a115437e2381f5bf535b94da0118ac8df8c5"
-    )
-    height = 540000
-    electrum_header = {
-        'block_height': 540000,
-        'version': 536870912,
-        'prev_block_hash':
-        '0000000000000000017ec8486bb85db468c39f41d0df7dbb8bc1cb1d125c97df',
-        'merkle_root':
-        '81237e4315a1435a9217f3d2e29d58812f6a54ca13de50300da4100ad43dae36',
-        'timestamp': 1532215285,
-        'bits': 402774676,
-        'nonce': 3321400748
-    }
+NAME = "name".encode("ascii")
+DAYS = hex(6).encode("ascii")
+VALUE = "value".encode("ascii")
+ADDRESS_SCRIPT = "address_script".encode("ascii")
 
-    assert coins.BitcoinCash.electrum_header(
-        raw_header, height) == electrum_header
+OP_NAME_NEW = OpCodes.OP_1
+OP_NAME_UPDATE = OpCodes.OP_2
+OP_DROP = OpCodes.OP_DROP
+OP_2DROP = OpCodes.OP_2DROP
+DP_MULT = NameMixin.DATA_PUSH_MULTIPLE
+
+
+def create_script(pattern, address_script):
+    script = bytearray()
+    for item in pattern:
+        if type(item) == int:
+            script.append(item)
+        else:
+            script.extend(Script.push_data(item))
+    script.extend(address_script)
+
+    return bytes(script)
+
+
+@pytest.mark.parametrize("opcode,pattern", (
+        ([OP_NAME_NEW, OP_DROP, -1, -1, OP_2DROP, -1, OP_DROP],
+         [OP_NAME_NEW, OP_DROP, NAME, DAYS, OP_2DROP, VALUE, OP_DROP]),
+
+        ([OP_NAME_NEW, OP_DROP, -1, -1, OP_2DROP, DP_MULT],
+         [OP_NAME_NEW, OP_DROP, NAME, DAYS, OP_2DROP, VALUE, OP_DROP]),
+        ([OP_NAME_NEW, OP_DROP, -1, -1, OP_2DROP, DP_MULT],
+         [OP_NAME_NEW, OP_DROP, NAME, DAYS, OP_2DROP, VALUE, VALUE, OP_2DROP]),
+
+        ([OP_NAME_NEW, OP_DROP, -1, OP_2DROP, DP_MULT, -1, OP_DROP],
+         [OP_NAME_NEW, OP_DROP, NAME, OP_2DROP, VALUE, OP_DROP, DAYS, OP_DROP]),
+        ([OP_NAME_NEW, OP_DROP, -1, OP_2DROP, DP_MULT, -1, OP_DROP],
+         [OP_NAME_NEW, OP_DROP, NAME, OP_2DROP, VALUE, VALUE, OP_2DROP, DAYS, OP_DROP]),
+))
+def test_name_mixin_interpret_name_prefix(opcode, pattern):
+    ops = [opcode]
+    script = create_script(pattern, ADDRESS_SCRIPT)
+    parsed_names, parsed_address_script = NameMixin.interpret_name_prefix(script, ops)
+
+    assert len(parsed_names) == 0
+    assert parsed_address_script == ADDRESS_SCRIPT
+
+
+@pytest.mark.parametrize("opcode,pattern", (
+        ([OP_NAME_NEW, OP_DROP, "name", "days", OP_2DROP, -1, OP_DROP],
+         [OP_NAME_NEW, OP_DROP, NAME, DAYS, OP_2DROP, VALUE, OP_DROP]),
+        ([OP_NAME_NEW, OP_DROP, "name", OP_DROP, -1, OP_DROP, "days", OP_DROP],
+         [OP_NAME_NEW, OP_DROP, NAME, OP_DROP, VALUE, OP_DROP, DAYS, OP_DROP]),
+
+        ([OP_NAME_NEW, OP_DROP, "name", "days", OP_2DROP, DP_MULT],
+         [OP_NAME_NEW, OP_DROP, NAME, DAYS, OP_2DROP, VALUE, OP_DROP]),
+        ([OP_NAME_NEW, OP_DROP, "name", "days", OP_2DROP, DP_MULT],
+         [OP_NAME_NEW, OP_DROP, NAME, DAYS, OP_2DROP, VALUE, VALUE, OP_2DROP]),
+        ([OP_NAME_NEW, OP_DROP, "name", "days", OP_2DROP, DP_MULT],
+         [OP_NAME_NEW, OP_DROP, NAME, DAYS, OP_2DROP, VALUE, VALUE, VALUE, OP_2DROP, OP_DROP]),
+
+        ([OP_NAME_NEW, OP_DROP, "name", OP_2DROP, DP_MULT, "days", OP_DROP],
+         [OP_NAME_NEW, OP_DROP, NAME, OP_2DROP, VALUE, OP_DROP, DAYS, OP_DROP]),
+        ([OP_NAME_NEW, OP_DROP, "name", OP_2DROP, DP_MULT, "days", OP_DROP],
+         [OP_NAME_NEW, OP_DROP, NAME, OP_2DROP, VALUE, VALUE, OP_2DROP, DAYS, OP_DROP]),
+        ([OP_NAME_NEW, OP_DROP, "name", OP_2DROP, DP_MULT, "days", OP_DROP],
+         [OP_NAME_NEW, OP_DROP, NAME, OP_2DROP, VALUE, VALUE, VALUE, OP_2DROP, OP_DROP, DAYS, OP_DROP]),
+))
+def test_name_mixin_interpret_name_prefix_with_named_placeholders(opcode, pattern):
+    ops = [opcode]
+    script = create_script(pattern, ADDRESS_SCRIPT)
+    parsed_names, parsed_address_script = NameMixin.interpret_name_prefix(script, ops)
+
+    assert parsed_names["name"][1] == NAME
+    assert parsed_names["days"][1] == DAYS
+    assert parsed_address_script == ADDRESS_SCRIPT
+
+
+@pytest.mark.parametrize("opcode", (
+        [OP_NAME_UPDATE, OP_DROP, -1, -1, OP_2DROP, -1, OP_DROP],
+        [OP_NAME_NEW, OP_DROP, -1, -1, OP_DROP, OP_DROP, -1, OP_DROP],
+        [OP_NAME_NEW, OP_DROP, "name", "days", OP_DROP, -1, OP_DROP],
+))
+def test_name_mixin_interpret_name_prefix_wrong_ops(opcode):
+    ops = [opcode]
+    script = create_script([OP_NAME_NEW, OP_DROP, NAME, DAYS, OP_2DROP,
+                            VALUE, OP_DROP], ADDRESS_SCRIPT)
+    parsed_names, parsed_address_script = NameMixin.interpret_name_prefix(script, ops)
+
+    assert parsed_names is None
+    assert parsed_address_script == script

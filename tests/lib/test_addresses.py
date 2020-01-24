@@ -69,6 +69,12 @@ addresses = [
      "23b5dd9b7b402388c7a40bc88c261f3178acf30d", "7c7bdf0e0713f3752f4b88"),
     (coins.SmartCash, "SQFDM9NtRRmpHebq3H5RA3qpGJfGqp8Xgw",
      "206168f5322583ff37f8e55665a4789ae8963532", "b8cb80b26e8932f5b12a7e"),
+    (coins.Peercoin, "PAprodbYvZqf4vjhef49aThB9rSZRxXsM6",
+     "1886c1b26e9546e8d424eb79631ee68de134466b", "2a9d25cb0c9f05690bff89"),
+    (coins.PeercoinTestnet, "msnHPXDWuJhRBPVNQnwXdKvEMQHLr9z1P5",
+     "8687b01c03f47615226bdf54443f172d8eb523c6", "318a000ccf626685c8c213"),
+    (coins.GravityZeroCoin, "GJPaFtL7ffbFPQKbPoLn2PvgajQ48QGo67",
+     "05fc7b8c8ba198dedb4d14223aeb709436373d6b", "bd8fa7f0c7b50b023ac0c6"),
 ]
 
 
